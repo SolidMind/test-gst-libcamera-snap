@@ -1,0 +1,98 @@
+name: test-gst-libcamera
+base: core22
+version: '0.1.0'
+summary: A simple Rust app
+description: |
+  This is a simple Rust application packaged as a Snap.
+
+grade: devel
+confinement: devmode
+
+plugs:
+  camera:
+    interface: camera
+  raw-usb:
+    interface: raw-usb
+
+apps:
+  test-gst-libcamera:
+    command: bin/test-gst-libcamera
+    
+    environment:
+      LIBCAMERA_IPA_CONFIG_PATH: $SNAP/usr/share/libcamera/ipa
+      LIBCAMERA_IPA_MODULE_PATH: $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET/libcamera
+      LIBCAMERA_LOG_LEVELS: "Camera:DEBUG,CameraManager:DEBUG"
+      LD_LIBRARY_PATH: $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET:$LD_LIBRARY_PATH
+      GST_PLUGIN_SYSTEM_PATH: $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET/gstreamer-1.0/
+      GST_PLUGIN_SCANNER: $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET/gstreamer-1.0/gst-plugin-scanner
+      GST_PLUGIN_FEATURE_RANK: pulsesink:NONE,pulsesrc:NONE
+      GST_DEBUG: "4,libcamera:5,GST_PLUGIN_LOADING:5"
+
+    plugs:
+      - camera
+      - raw-usb
+      - opengl
+      - hardware-observe
+      - network
+      - network-bind
+
+parts:
+  libcamera:
+    source: https://github.com/libcamera-org/libcamera.git
+    source-tag: v0.5.2
+    plugin: meson
+    meson-parameters:
+      - --prefix=/usr
+      - -Dpipelines=rpi/pisp,rpi/vc4
+      - -Dipas=rpi/pisp,rpi/vc4
+      - -Dtest=false
+      - -Dv4l2=true
+    build-packages:
+      - meson
+      - cmake
+      - libgnutls28-dev
+      - python3-yaml
+      - python3-ply
+      - python3-jinja2
+      - python3-pip
+      - libyaml-dev
+      - libboost-dev
+      - libudev-dev
+    stage-packages:
+      - libyaml-0-2
+      - libgnutls30
+    override-build: |
+      pip3 install --upgrade "meson>=1.0.1" ninja pyyaml ply jinja2
+      craftctl default
+      # IPAモジュールのコピー
+      mkdir -p $CRAFT_PART_INSTALL/usr/lib/$CRAFT_ARCH_TRIPLET/libcamera
+      cp -r $CRAFT_PART_BUILD/src/ipa/rpi/pisp/*.so* $CRAFT_PART_INSTALL/usr/lib/$CRAFT_ARCH_TRIPLET/libcamera/ || true
+
+  app:
+    plugin: rust
+    source: test-gst-libcamera
+    after: [libcamera] 
+    build-packages:
+      - build-essential
+      - cmake
+      - pkg-config
+      - llvm
+      - clang
+      - libgstreamer1.0-dev
+      - libgstrtspserver-1.0-dev
+      - libjpeg-dev
+      - libssl-dev
+    stage-packages:
+      - libgstreamer1.0-0
+      - gstreamer1.0-plugins-base
+      - gstreamer1.0-tools
+      - gstreamer1.0-plugins-good
+      - libjpeg-turbo8
+    override-build: |
+      craftctl default
+
+layout:
+  /usr/share/libcamera:
+    bind: $SNAP/usr/share/libcamera
+  /usr/lib/$CRAFT_ARCH_TRIPLET/libcamera:
+    bind: $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET/libcamera

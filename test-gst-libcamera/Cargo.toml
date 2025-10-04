@@ -1,0 +1,9 @@
+[package]
+name = "test-gst-libcamera"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gstreamer = { version = "0.23.5" }
+gstreamer-video = "0.23.4"
+gstreamer-app = "0.23.4"

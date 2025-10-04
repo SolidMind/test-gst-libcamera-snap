@@ -1,0 +1,3 @@
+test-gst-libcamera/target/
+test-gst-libcamera/Cargo.lock
+*.snap
